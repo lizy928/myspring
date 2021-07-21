@@ -1,4 +1,4 @@
-package com.lizy.myspring.test.service;
+package com.lizy.myspring.test;
 
 import com.lizy.myspring.spring.InititalizingBean;
 import com.lizy.myspring.spring.annotation.Autowried;

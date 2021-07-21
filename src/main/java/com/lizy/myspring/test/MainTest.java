@@ -1,7 +1,7 @@
 package com.lizy.myspring.test;
 
 import com.lizy.myspring.spring.context.ApplicationContext;
-import com.lizy.myspring.test.service.UserService;
+import com.lizy.myspring.test.UserService;
 
 /**
  * @author lizy
@@ -14,6 +14,9 @@ public class MainTest {
 
         final UserService userService = (UserService) applicationContext.getBean("userService");
         userService.test();
+
+        final OrderService orderService = (OrderService) applicationContext.getBean("orderService");
+        orderService.test();
     }
 
 }

@@ -1,4 +1,4 @@
-package com.lizy.myspring.test.service;
+package com.lizy.myspring.test;
 
 /**
  * @author lizy

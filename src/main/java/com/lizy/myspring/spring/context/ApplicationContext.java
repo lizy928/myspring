@@ -2,16 +2,15 @@ package com.lizy.myspring.spring.context;
 
 import com.lizy.myspring.spring.BeanDefinition;
 import com.lizy.myspring.spring.InititalizingBean;
-import com.lizy.myspring.spring.annotation.Autowried;
-import com.lizy.myspring.spring.annotation.Component;
-import com.lizy.myspring.spring.annotation.ComponentScan;
-import com.lizy.myspring.spring.annotation.Scope;
+import com.lizy.myspring.spring.annotation.*;
 import com.lizy.myspring.spring.aware.BeanNameAware;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,6 +24,8 @@ public class ApplicationContext {
     private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+
+    private List<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
 
     public ApplicationContext(Class clazz) {
         this.configClazz = clazz;
@@ -58,11 +59,22 @@ public class ApplicationContext {
             for (File f : files) {
                 String absolutePath = f.getAbsolutePath();
                 if (absolutePath.contains(".class")) {
-                    absolutePath = StringUtils.substringAfter(absolutePath, "classes\\");
+                    absolutePath = StringUtils.substringAfter(absolutePath, "classes/");
                     absolutePath = StringUtils.remove(absolutePath, ".class");
-                    String className = StringUtils.replace(absolutePath, "\\", ".");
+                    String className = StringUtils.replace(absolutePath, "/", ".");
                     try {
                         final Class<?> loadClass = classLoader.loadClass(className);
+
+                        // beanpostprocessor
+                        if (BeanPostProcessor.class.isAssignableFrom(loadClass)) {
+                            try {
+                                final BeanPostProcessor beanPostProcessor = (BeanPostProcessor) loadClass.newInstance();
+                                beanPostProcessorList.add(beanPostProcessor);
+                            } catch (InstantiationException | IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
                         if (loadClass.isAnnotationPresent(Component.class)) {
                             final Component component = loadClass.getDeclaredAnnotation(Component.class);
                             final String beanName = component.value();
@@ -100,7 +112,6 @@ public class ApplicationContext {
                     field.setAccessible(true);
                     field.set(instance, o);
                 }
-                ;
             }
 
             // aware
@@ -108,9 +119,19 @@ public class ApplicationContext {
                 ((BeanNameAware) instance).setBeanName(beanName);
             }
 
-            // init
+            // 执行beanPostProcessor
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessBeforeInitialization(instance, beanName);
+            }
+
+            // 初始化
             if(instance instanceof InititalizingBean){
                 ((InititalizingBean) instance).afterPropertiesSet();
+            }
+
+            // 执行beanPostProcessor
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessAfterInitialization(instance, beanName);
             }
 
             return instance;
